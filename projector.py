@@ -16,10 +16,11 @@ import imageio
 import numpy as np
 import PIL.Image
 import tensorflow as tf
-import tqdm
+import tqdm 
 
 import dnnlib
 import dnnlib.tflib as tflib
+from pathlib2 import Path
 
 class Projector:
     def __init__(self):
@@ -202,7 +203,7 @@ class Projector:
 
 #----------------------------------------------------------------------------
 
-def project(network_pkl: str, target_fname: str, outdir: str, save_video: bool, seed: int):
+def project(network_pkl: str, target_fname: str, outdir: str, save_video: bool, seed: int, name: str):
     # Load networks.
     tflib.init_tf({'rnd.np_random_seed': seed})
     print('Loading networks from "%s"...' % network_pkl)
@@ -226,10 +227,10 @@ def project(network_pkl: str, target_fname: str, outdir: str, save_video: bool, 
 
     # Setup output directory.
     os.makedirs(outdir, exist_ok=True)
-    target_pil.save(f'{outdir}/target.png')
+    target_pil.save(f'{outdir}/target-{name}.png')
     writer = None
     if save_video:
-        writer = imageio.get_writer(f'{outdir}/proj.mp4', mode='I', fps=60, codec='libx264', bitrate='16M')
+        writer = imageio.get_writer(f'{outdir}/proj{name}.mp4', mode='I', fps=60, codec='libx264', bitrate='16M')
 
     # Run projector.
     with tqdm.trange(proj.num_steps) as t:
@@ -241,8 +242,8 @@ def project(network_pkl: str, target_fname: str, outdir: str, save_video: bool, 
             t.set_postfix(dist=f'{dist[0]:.4f}', loss=f'{loss:.2f}')
 
     # Save results.
-    PIL.Image.fromarray(proj.images_uint8[0], 'RGB').save(f'{outdir}/proj.png')
-    np.savez(f'{outdir}/dlatents.npz', dlatents=proj.dlatents)
+    PIL.Image.fromarray(proj.images_uint8[0], 'RGB').save(f'{outdir}/{name}.png')
+    np.savez(f'{outdir}/dlatents-{name}.npz', dlatents=proj.dlatents)
     if writer is not None:
         writer.close()
 
@@ -284,6 +285,11 @@ def main():
 #----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    main()
+    listOfFiles = list()
+    dirpath = Path('/home/jma/Projects/stylegan2-ada/SamplePhotos/aligned')
+    
+    for file in dirpath.glob("*.png"):
+        print(file.stem)
+        project(network_pkl='/home/jma/Projects/stylegan2-ada/original.pkl', target_fname=str(file.absolute()), outdir='/home/jma/Projects/stylegan2-ada/SamplePhotos/projected-aligned', save_video=False, seed=12345, name=file.stem)
 
 #----------------------------------------------------------------------------
